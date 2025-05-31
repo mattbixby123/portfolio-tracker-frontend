@@ -20,17 +20,25 @@ class ApiService {
     this.api.interceptors.request.use((config) => {
       const token = this.getAuthToken();
       if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+        config.headers.authorization = `Bearer ${token}`;
       }
       return config;
     });
 
-    // Response interceptor for error handling
+    // Response interceptor for error handling and token refresh
     this.api.interceptors.response.use(
-      (response) => response,
+      (response) => {
+        // Check for refreshed token in response headers
+        const newToken = response.headers['x-auth-token'];
+        if (newToken) {
+          this.setAuthToken(newToken);
+        }
+        return response;
+      },
       (error) => {
         if (error.response?.status === 401) {
           // Handle unauthorized - redirect to login
+          this.removeAuthToken();
           if (typeof window !== 'undefined') {
             window.location.href = '/login';
           }
