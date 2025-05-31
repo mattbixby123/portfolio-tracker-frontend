@@ -1,12 +1,13 @@
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
 import { useLoaderData, Link } from "@remix-run/react";
 import { requireAuthToken } from "~/utils/auth.server";
 import { portfolioService } from "~/services/portfolio.service";
-import { positionService } from "~/services/position.service";
+
 import Layout from "~/components/Layout";
 import PositionCard from "~/components/PositionCard";
 import PerformanceChart from "~/components/PerformanceChart";
+import type { PositionDto } from "~/types/position";
+
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const token = await requireAuthToken(request);
@@ -18,14 +19,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
       portfolioService.getSectorAllocation(),
     ]);
 
-    return json({ summary, topHoldings, sectorAllocation });
+    return { summary, topHoldings, sectorAllocation };
   } catch (error) {
     throw new Response("Failed to load dashboard data", { status: 500 });
   }
 }
+interface LoaderData {
+  summary: Record<string, any>;
+  topHoldings: PositionDto[];
+  sectorAllocation: Record<string, number>;
+}
 
 export default function Dashboard() {
-  const { summary, topHoldings, sectorAllocation } = useLoaderData<typeof loader>();
+  const { summary, topHoldings, sectorAllocation } = useLoaderData<LoaderData>();
 
   return (
     <Layout>
