@@ -9,25 +9,50 @@ import PerformanceChart from "~/components/PerformanceChart";
 import type { PositionDto } from "~/types/position";
 
 
+// Mock data for when services aren't available
+const mockData = {
+  summary: {
+    totalValue: 0,
+    totalPositions: 0,
+    totalGain: 0,
+    percentageReturn: 0
+  },
+  topHoldings: [],
+  sectorAllocation: {}
+};
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const token = await requireAuthToken(request);
   
   try {
-    const [summary, topHoldings, sectorAllocation] = await Promise.all([
-      portfolioService.getPortfolioSummary(),
-      portfolioService.getTopHoldings(5),
-      portfolioService.getSectorAllocation(),
+    // Try to fetch real data with individual error handling
+    const [summary, topHoldings, sectorAllocation] = await Promise.allSettled([
+      portfolioService.getPortfolioSummary().catch(() => mockData.summary),
+      portfolioService.getTopHoldings(5).catch(() => mockData.topHoldings),
+      portfolioService.getSectorAllocation().catch(() => mockData.sectorAllocation),
     ]);
 
-    return { summary, topHoldings, sectorAllocation };
+    return {
+      summary: summary.status === 'fulfilled' ? summary.value : mockData.summary,
+      topHoldings: topHoldings.status === 'fulfilled' ? topHoldings.value : mockData.topHoldings,
+      sectorAllocation: sectorAllocation.status === 'fulfilled' ? sectorAllocation.value : mockData.sectorAllocation,
+      isUsingMockData: true // Flag to show user this is placeholder data
+    };
   } catch (error) {
-    throw new Response("Failed to load dashboard data", { status: 500 });
+    // Fallback to mock data instead of throwing
+    console.warn("Portfolio service unavailable, using mock data:", error);
+    return {
+      ...mockData,
+      isUsingMockData: true
+    };
   }
 }
+
 interface LoaderData {
   summary: Record<string, any>;
   topHoldings: PositionDto[];
   sectorAllocation: Record<string, number>;
+  isUsingMockData: boolean;
 }
 
 export default function Dashboard() {

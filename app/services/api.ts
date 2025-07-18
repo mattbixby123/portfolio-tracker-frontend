@@ -20,7 +20,7 @@ class ApiService {
     this.api.interceptors.request.use((config) => {
       const token = this.getAuthToken();
       if (token) {
-        config.headers.authorization = `Bearer ${token}`;
+        config.headers.Authorization = `Bearer ${token}`;
       }
       return config;
     });
